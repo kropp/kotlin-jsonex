@@ -1,5 +1,6 @@
 import java.util.*
 
+@Json
 interface Review {
   val id: String
   val timestamp: Date
@@ -10,10 +11,12 @@ interface Review {
   val commits: Array<out Commit>
 }
 
+@Json
 interface Commit {
   val id: String
 }
 
+@Json
 interface Person {
   val name: String
   val experience: Int
