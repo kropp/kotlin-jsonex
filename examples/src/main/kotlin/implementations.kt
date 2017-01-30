@@ -1,13 +1,13 @@
 import com.github.kropp.jsonex.*
 import java.util.*
 
-interface MutableReview : Review {
+interface ReviewBuilder : Review {
   override var id: String
   override var timestamp: Date
   override var finished: Boolean
 
-  override var author: MutablePerson
-  fun author(builder: MutablePerson.() -> Unit) = author.apply(builder)
+  override var author: PersonBuilder
+  fun author(builder: PersonBuilder.() -> Unit) = author.apply(builder)
 
   override var commits: Array<out Commit>
 }
@@ -22,17 +22,17 @@ class ReviewImpl(map: Map<String,Any> = mapOf()) : Review, JsonObject<ReviewImpl
   override val commits by array<Commit>()
 }
 
-class MutableReviewImpl(map: MutableMap<String,Any> = mutableMapOf()) : MutableReview, MutableJsonObject<MutableReviewImpl, MutableReview>(map) {
+class ReviewBuilderImpl(map: MutableMap<String,Any> = mutableMapOf()) : ReviewBuilder, JsonObjectBuilder<ReviewBuilderImpl, ReviewBuilder>(map) {
   override var id by string()
   override var timestamp by date()
   override var finished by bool()
 
-  override var author: MutablePerson by MutablePersonImpl()
+  override var author: PersonBuilder by PersonBuilderImpl()
 
   override var commits by array<Commit>()
 }
 
-interface MutableCommit : Commit {
+interface CommitBuilder : Commit {
   override var id: String
 }
 
@@ -40,10 +40,10 @@ class CommitImpl(map: Map<String,Any> = mapOf()) : Commit, JsonObject<CommitImpl
   override val id by string()
 }
 
-class MutableCommitImpl : MutableCommit, MutableJsonObject<MutableCommitImpl, MutableCommit>() {
+class CommitBuilderImpl : CommitBuilder, JsonObjectBuilder<CommitBuilderImpl, CommitBuilder>() {
   override var id by string()
 }
-interface MutablePerson : Person {
+interface PersonBuilder : Person {
   override var name: String
   override var experience: Int
 }
@@ -53,11 +53,11 @@ class PersonImpl(map: MutableMap<String,Any> = mutableMapOf()) : Person, JsonObj
   override val experience by int()
 }
 
-class MutablePersonImpl(map: MutableMap<String,Any> = mutableMapOf()) : MutablePerson, MutableJsonObject<MutablePersonImpl, MutablePerson>(map) {
+class PersonBuilderImpl(map: MutableMap<String,Any> = mutableMapOf()) : PersonBuilder, JsonObjectBuilder<PersonBuilderImpl, PersonBuilder>(map) {
   override var name by string()
   override var experience by int()
 }
 
-fun person(builder: MutablePerson.() -> Unit): Person = PersonImpl(MutablePersonImpl().apply(builder)._map)
-fun review(builder: MutableReview.() -> Unit) = ReviewImpl(MutableReviewImpl().apply(builder)._map)
-fun commit(builder: MutableCommit.() -> Unit): Commit = CommitImpl(MutableCommitImpl().apply(builder)._map)
+fun person(builder: PersonBuilder.() -> Unit): Person = PersonImpl(PersonBuilderImpl().apply(builder)._map)
+fun review(builder: ReviewBuilder.() -> Unit): Review = ReviewImpl(ReviewBuilderImpl().apply(builder)._map)
+fun commit(builder: CommitBuilder.() -> Unit): Commit = CommitImpl(CommitBuilderImpl().apply(builder)._map)
