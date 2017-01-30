@@ -1,29 +1,49 @@
 import java.util.*
 import com.github.kropp.jsonex.*
 
-class Review(map: Map<String,Any> = mapOf()) : JsonObject<Review>(HashMap<String,Any>(map)) {
+class Review(map: Map<String,Any> = mapOf()) : JsonObject<Review>(map) {
+  val id by string()
+  val timestamp by date()
+  val finished by bool()
+
+  val author by Person()
+
+  val commits by array<Commit>()
+}
+
+class MutableReview(map: MutableMap<String,Any> = mutableMapOf()) : MutableJsonObject<MutableReview>(map) {
   var id by string()
   var timestamp by date()
   var finished by bool()
 
-  var author by Person()
+  var author by MutablePerson()
 
   var commits by array<Commit>()
 }
 
-class Commit : JsonObject<Commit>() {
+class Commit(map: Map<String,Any> = mapOf()) : JsonObject<Commit>(map) {
+  val id by string()
+}
+
+class MutableCommit : MutableJsonObject<MutableCommit>() {
   var id by string()
 }
 
-class Person(map: Map<String,Any> = mapOf()) : JsonObject<Person>(HashMap<String,Any>(map)) {
+class Person(map: MutableMap<String,Any> = mutableMapOf()) : JsonObject<Person>(map) {
+  val name by string()
+  val experience by int()
+}
+
+class MutablePerson(map: MutableMap<String,Any> = mutableMapOf()) : MutableJsonObject<MutablePerson>(map) {
   var name by string()
   var experience by int()
 }
 
 
-fun person(builder: Person.() -> Unit) = Person().apply(builder)
-fun review(builder: Review.() -> Unit) = Review().apply(builder)
-fun commit(builder: Commit.() -> Unit) = Commit().apply(builder)
+fun person(builder: MutablePerson.() -> Unit) = Person(MutablePerson().apply(builder)._map)
+fun review(builder: MutableReview.() -> Unit) = Review(MutableReview().apply(builder)._map)
+fun commit(builder: MutableCommit.() -> Unit) = Commit(MutableCommit().apply(builder)._map)
+
 
 fun main(args: Array<String>) {
   val r = review {
@@ -33,10 +53,12 @@ fun main(args: Array<String>) {
 
     commits = arrayOf(commit { id = "abc123" }, commit { id = "321cba" })
 
+/*
     author = person {
       name = "Jon Doe"
     }
     // or
+*/
     author {
       name = "John Doe"
     }
@@ -53,9 +75,11 @@ fun main(args: Array<String>) {
           "other" to true
       )
   ))
+/*
   r2.author {
     experience = 10
   }
+*/
   println(r2)
   println(r2.author.name)
 }
