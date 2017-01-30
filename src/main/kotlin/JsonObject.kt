@@ -5,16 +5,16 @@ import java.util.*
 import kotlin.reflect.KProperty
 
 @JsonDslMarker
-abstract class MutableJsonObject<T : MutableJsonObject<T>>(map: MutableMap<String,Any> = mutableMapOf()) : JsonObject<T>(map) {
+abstract class MutableJsonObject<T : MutableJsonObject<T,I>, I : Any>(map: MutableMap<String,Any> = mutableMapOf()) : JsonObject<T>(map) {
   public override val _map: MutableMap<String, Any> = map
 
   operator fun set(key: String, value: Any) { _map[key] = value }
 
-  operator fun provideDelegate(o: MutableJsonObject<*>, property: KProperty<*>): MutableJsonObject<T> {
+  operator fun provideDelegate(o: MutableJsonObject<*,*>, property: KProperty<*>): MutableJsonObject<T,I> {
     if (property.name in o) {
       val v = o[property.name]
       when(v) {
-        is MutableJsonObject<*> -> _map.putAll(v._map)
+        is MutableJsonObject<*,*> -> _map.putAll(v._map)
         is Map<*, *> -> _map.putAll(v as Map<out String, Any>)
       }
     }
@@ -22,8 +22,8 @@ abstract class MutableJsonObject<T : MutableJsonObject<T>>(map: MutableMap<Strin
     return this
   }
 
-  operator fun invoke(body: T.() -> Unit) { (this as T).apply(body) }
-  operator fun setValue(o: MutableJsonObject<*>, property: KProperty<*>, value: T) { o[property.name] = value }
+  //operator fun invoke(body: T.() -> Unit) { (this as T).apply(body) }
+  operator fun setValue(o: MutableJsonObject<*,*>, property: KProperty<*>, value: I) { o[property.name] = value }
 }
 
 abstract class JsonObject<T : JsonObject<T>>(map: Map<String,Any> = mapOf()) {
