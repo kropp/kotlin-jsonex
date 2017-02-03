@@ -20,6 +20,6 @@ abstract class JsonObjectBuilder<T : JsonObjectBuilder<T, I>, I : Any>(map: Muta
     return this
   }
 
-  //operator fun invoke(body: T.() -> Unit) { (this as T).apply(body) }
+  operator fun invoke(body: T.() -> Unit) { (this as T).apply(body) }
   operator fun setValue(o: JsonObjectBuilder<*, *>, property: KProperty<*>, value: I) { o[property.name] = value }
 }
