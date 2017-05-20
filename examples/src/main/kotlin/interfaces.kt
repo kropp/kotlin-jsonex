@@ -1,3 +1,4 @@
+import com.github.kropp.jsonex.Json
 import java.util.*
 
 @Json
