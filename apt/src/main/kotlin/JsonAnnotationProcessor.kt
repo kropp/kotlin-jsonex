@@ -21,11 +21,12 @@ class JsonAnnotationProcessor : AbstractProcessor() {
     val elements = annotations.filter { it.qualifiedName.contentEquals("com.github.kropp.jsonex.Json") }
         .map { roundEnv.getElementsAnnotatedWith(it) }
         .flatMap { it }
+        .filterIsInstance<TypeElement>()
 
     if (elements.any()) {
       File(kotlinGenerated).mkdirs()
       elements.forEach {
-        generateMutableInterface(it, elements.filterIsInstance<TypeElement>().map { it.qualifiedName.toString() })
+        generateMutableInterface(it, elements.map { it.qualifiedName.toString() })
       }
     }
 
@@ -49,25 +50,61 @@ class JsonAnnotationProcessor : AbstractProcessor() {
     TypeKind.FLOAT -> "Float"
     TypeKind.DOUBLE -> "Double"
     TypeKind.VOID -> "Unit"
-    TypeKind.ARRAY -> "Array<${typeName((type as ArrayType).componentType)}>"
+    TypeKind.ARRAY -> "Array<out ${typeName((type as ArrayType).componentType).removePrefix("Mutable")}>"
     TypeKind.DECLARED -> {
       val typeName = type.toString()
-      if (typeName == "java.lang.String") "String" else typeName
+      when (typeName) {
+        "java.lang.String" -> "String"
+        "java.util.Date" -> typeName
+        else -> "Mutable" + typeName
+      }
     }
     else -> ""
   }
 
-  private fun generateMutableInterface(element: Element, elements: List<String>) {
-    File(kotlinGenerated, "Mutable${element.simpleName}.kt").writer().buffered().use {
-      it.appendln("interface Mutable${element.simpleName} {")
+  private fun helperName(type: TypeMirror): String = when(type.kind) {
+    TypeKind.BOOLEAN -> "bool()"
+    TypeKind.BYTE, TypeKind.SHORT, TypeKind.INT, TypeKind.LONG -> "int()"
+    TypeKind.CHAR -> "string()"
+    TypeKind.FLOAT, TypeKind.DOUBLE -> "double()"
+    TypeKind.ARRAY -> "array<${typeName((type as ArrayType).componentType).removePrefix("Mutable")}>()"
+    TypeKind.DECLARED -> {
+      val typeName = type.toString()
+      when (typeName) {
+        "java.lang.String" -> "string()"
+        "java.util.Date" -> "date()"
+        else -> typeName + "Impl()"
+      }
+    }
+    else -> ""
+  }
+
+  private fun generateMutableInterface(element: TypeElement, elements: List<String>) {
+    val className = element.simpleName
+    File(kotlinGenerated, "${className}Json.kt").writer().buffered().use {
+      if (element.qualifiedName != element.simpleName) {
+        it.appendln("package ${element.qualifiedName.removeSuffix("." + element.simpleName)}")
+      }
+      it.appendln("import com.github.kropp.jsonex.*")
+
+      it.appendln("interface Mutable$className {")
       for (property in element.enclosedElements.filterIsInstance<ExecutableElement>()) {
         val propName = propName(property)
         val typeName = typeName(property.returnType)
 
         it.appendln("  var $propName: $typeName")
         if (typeName in elements) {
-          it.appendln("  fun $propName(builder: ${typeName}Builder.() -> Unit) = $propName.apply(builder)")
+          it.appendln("  fun $propName(builder: $typeName.() -> Unit) = $propName.apply(builder)")
         }
+      }
+      it.appendln("}")
+
+      it.appendln("class ${className}Impl(map: Map<String,Any> = mapOf()) : $className, JsonObject<${className}Impl>(map) {")
+      for (property in element.enclosedElements.filterIsInstance<ExecutableElement>()) {
+        val propName = propName(property)
+        val helperName = helperName(property.returnType)
+
+        it.appendln("  override val $propName by $helperName")
       }
       it.appendln("}")
     }
