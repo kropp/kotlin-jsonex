@@ -10,6 +10,7 @@ import javax.lang.model.element.Element
 import javax.lang.model.element.ExecutableElement
 import javax.lang.model.element.TypeElement
 import javax.lang.model.type.ArrayType
+import javax.lang.model.type.DeclaredType
 import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 
@@ -49,16 +50,32 @@ class JsonAnnotationProcessor : AbstractProcessor() {
     TypeKind.FLOAT -> "Float"
     TypeKind.DOUBLE -> "Double"
     TypeKind.VOID -> "Unit"
-    TypeKind.ARRAY -> "Array<out ${typeName((type as ArrayType).componentType).removePrefix("Mutable")}>"
+    TypeKind.ARRAY -> "Array<out ${typeName((type as ArrayType).componentType)}>"
+    TypeKind.DECLARED -> {
+      val typeName = type.toString()
+      when (typeName) {
+        "java.lang.String" -> "String"
+        else -> typeName
+      }
+    }
+    else -> ""
+  }
+
+  private fun mutableTypeName(type: TypeMirror): String = when(type.kind) {
     TypeKind.DECLARED -> {
       val typeName = type.toString()
       when (typeName) {
         "java.lang.String" -> "String"
         "java.util.Date" -> typeName
-        else -> "Mutable" + typeName
+        else -> {
+          val element = (type as DeclaredType).asElement()
+          val packageName = element.toString().removeSuffix(element.simpleName)
+
+          packageName + "Mutable" + element.simpleName
+        }
       }
     }
-    else -> ""
+    else -> typeName(type)
   }
 
   private fun helperName(type: TypeMirror): String = when(type.kind) {
@@ -89,7 +106,12 @@ class JsonAnnotationProcessor : AbstractProcessor() {
       when (typeName) {
         "java.lang.String" -> "string()"
         "java.util.Date" -> "date()"
-        else -> "Mutable${typeName}Impl()"
+        else -> {
+          val element = (type as DeclaredType).asElement()
+          val packageName = element.toString().removeSuffix(element.simpleName)
+
+          "${packageName}Mutable${element.simpleName}Impl()"
+        }
       }
     }
     else -> ""
@@ -106,10 +128,10 @@ class JsonAnnotationProcessor : AbstractProcessor() {
       it.appendln("interface Mutable$className {")
       for (property in element.enclosedElements.filterIsInstance<ExecutableElement>()) {
         val propName = propName(property)
-        val typeName = typeName(property.returnType)
+        val typeName = mutableTypeName(property.returnType)
 
         it.appendln("  var $propName: $typeName")
-        if (typeName.removePrefix("Mutable") in elements) {
+        if (property.returnType.toString() in elements) {
           it.appendln("  fun $propName(builder: $typeName.() -> Unit) = $propName.apply(builder)")
         }
       }
@@ -129,7 +151,7 @@ class JsonAnnotationProcessor : AbstractProcessor() {
         val propName = propName(property)
         val helperName = mutableHelperName(property.returnType)
 
-        it.appendln("  override var $propName: ${typeName(property.returnType)} by $helperName")
+        it.appendln("  override var $propName: ${mutableTypeName(property.returnType)} by $helperName")
       }
       it.appendln("}")
 
