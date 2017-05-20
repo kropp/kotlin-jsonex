@@ -1,2 +1,3 @@
 rootProject.name = 'kotlin-jsonex'
+rootProject.buildFileName='build.gradle.kts'
 include 'examples'
